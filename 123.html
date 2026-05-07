@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>011 益智遊戲</title>
+    <style>
+        :root {
+            --bg-color: #2c3e50;
+            --empty: #34495e;
+            --red: #e74c3c;
+            --blue: #3498db;
+            --text: #ecf0f1;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        h1 { margin-bottom: 10px; }
+
+        .controls {
+            margin-bottom: 20px;
+        }
+
+        #grid {
+            display: grid;
+            gap: 8px;
+            background-color: #2c3e50;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+
+        .cell {
+            width: 60px;
+            height: 60px;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.1s, background-color 0.2s;
+            background-color: var(--empty);
+            border: none;
+        }
+
+        .cell:hover { transform: scale(1.05); }
+
+        .cell.red { background-color: var(--red); }
+        .cell.blue { background-color: var(--blue); }
+        .cell.fixed { cursor: default; position: relative; }
+        .cell.fixed::after {
+            content: '';
+            width: 6px;
+            height: 6px;
+            background: rgba(255,255,255,0.4);
+            border-radius: 50%;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #27ae60;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        button:hover { background-color: #2ecc71; }
+
+        #message {
+            margin-top: 20px;
+            font-weight: bold;
+            height: 24px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>011 Puzzle</h1>
+    
+    <div class="controls">
+        <button onclick="initGame()">重新開始新局</button>
+    </div>
+
+    <div id="grid"></div>
+
+    <div id="message"></div>
+
+    <script>
+        const SIZE = 6; // 6x6 網格
+        let board = [];
+        let solution = [];
+
+        // 初始化遊戲
+        function initGame() {
+            const gridElement = document.getElementById('grid');
+            const message = document.getElementById('message');
+            message.innerText = "";
+            gridElement.style.gridTemplateColumns = `repeat(${SIZE}, 60px)`;
+            gridElement.innerHTML = '';
+            
+            // 簡單的謎題生成邏輯 (這是一個預設的解)
+            // 實務上應由算法生成，這裡提供一個靜態關卡作為演示
+            const puzzle = [
+                [1, 0, 0, 2, 0, 0],
+                [0, 2, 0, 0, 2, 0],
+                [0, 0, 0, 0, 0, 1],
+                [1, 0, 2, 2, 0, 0],
+                [0, 1, 0, 0, 1, 0],
+                [0, 0, 0, 2, 0, 0]
+            ];
+            // 0=空, 1=紅, 2=藍
+
+            board = puzzle.map(row => [...row]);
+
+            for (let r = 0; r < SIZE; r++) {
+                for (let c = 0; c < SIZE; c++) {
+                    const cell = document.createElement('div');
+                    cell.classList.add('cell');
+                    if (board[r][c] !== 0) {
+                        cell.classList.add('fixed');
+                        updateCellView(cell, board[r][c]);
+                    }
+                    cell.onclick = () => handleCellClick(r, c, cell);
+                    gridElement.appendChild(cell);
+                }
+            }
+        }
+
+        function handleCellClick(r, c, element) {
+            if (element.classList.contains('fixed')) return;
+
+            // 狀態循環: 空 -> 紅(1) -> 藍(2) -> 空(0)
+            board[r][c] = (board[r][c] + 1) % 3;
+            updateCellView(element, board[r][c]);
+            checkWin();
+        }
+
+        function updateCellView(element, value) {
+            element.classList.remove('red', 'blue');
+            if (value === 1) element.classList.add('red');
+            if (value === 2) element.classList.add('blue');
+        }
+
+        function checkWin() {
+            // 1. 檢查是否填滿
+            for(let r=0; r<SIZE; r++) {
+                for(let c=0; c<SIZE; c++) {
+                    if (board[r][c] === 0) return;
+                }
+            }
+
+            // 2. 檢查規則 (簡易版檢查)
+            if (isValid()) {
+                document.getElementById('message').innerText = "恭喜完成！🎉";
+            }
+        }
+
+        function isValid() {
+            // 檢查行與列的數量與連續性
+            for (let i = 0; i < SIZE; i++) {
+                let row = board[i];
+                let col = board.map(r => r[i]);
+                
+                if (!checkLine(row) || !checkLine(col)) return false;
+            }
+            return true;
+        }
+
+        function checkLine(line) {
+            let reds = line.filter(v => v === 1).length;
+            let blues = line.filter(v => v === 2).length;
+            
+            // 數量相等
+            if (reds !== SIZE / 2 || blues !== SIZE / 2) return false;
+
+            // 無連續三個
+            for (let i = 0; i < line.length - 2; i++) {
+                if (line[i] === line[i+1] && line[i] === line[i+2]) return false;
+            }
+            return true;
+        }
+
+        // 啟動
+        initGame();
+    </script>
+</body>
+</html>
